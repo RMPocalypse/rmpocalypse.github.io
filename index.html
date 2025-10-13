@@ -5,22 +5,19 @@
     <title>RMPocalypse Attack</title>
     <meta charset="UTF-8" />
     <meta property="og:title" content="RMPocalypse Attack">
-    <meta property="og:description"
-        content="How A Catch-22 Breaks AMD SEV-SNP">
+    <meta property="og:description" content="How A Catch-22 Breaks AMD SEV-SNP">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://rmpocalypse.github.io/">
-    <meta property="og:image" content="https://rmpocalypse.github.io/preview.jpg">
+    <meta property="og:image" content="https://rmpocalypse.github.io/preview.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="627">
     <meta property="og:site_name" content="RMPocalypse Attack">
     <meta name=twitter:card content="summary_large_image">
-    <meta name=twitter:image content="https://rmpocalypse.github.io/preview.jpg">
+    <meta name=twitter:image content="https://rmpocalypse.github.io/preview.png">
     <meta name=twitter:title content="RMPocalypse Attack">
-    <meta name=twitter:description
-        content="How A Catch-22 Breaks AMD SEV-SNP">
+    <meta name=twitter:description content="How A Catch-22 Breaks AMD SEV-SNP">
     <meta name=twitter:site content="@sectrs_ethz">
-    <meta name=description
-        content="How A Catch-22 Breaks AMD SEV-SNP">
+    <meta name=description content="How A Catch-22 Breaks AMD SEV-SNP">
     <script
         type=application/ld+json>{"@context":"https://schema.org","@graph":[{"@type":"WebSite","url":"https://rmpocalypse.github.io/","name":"RMPocalypse Attack","description":"AMD SEV-SNP offers confidential computing in form of confidential VMs, such that the untrusted hypervisor cannot tamper with its confidentiality and integrity. SEV-SNP, the latest addition, ensures integrity via the Reverse Map Table (RMP) that stops the hypervisor from tampering guest page mappings. AMD uses RMP entries to protect the rest of the RMP, thus causing a Catch-22 during the RMP setup phase. To address this, SEV-SNP relies on AMD's Platform Security Processor (PSP), that resides next to the x86 cores executing SEV-SNP VMs, to perform the RMP initialization. During initialization, only PSP should be able to alter the RMP memory. All other memory accesses must be fenced, especially from the x86 cores. We present RMPocalypse, a novel attack that shows a critical gap in the security of RMP initialization, wherein the x86 cores maliciously control parts of the initial RMP state. Our analysis shows that the vulnerability arises due to the complex, but insufficient, interplay of multiple hardware components and distributed access controls. To show the impact of our finding, we exploit this gap to break confidentiality and integrity guarantees of SEV-SNP. We demonstrate RMPocalypse by enabling debug on production-mode CVMs, faking attestation, VMSA state replay, and code injection"}]}</script>
     <script
@@ -60,33 +57,130 @@
     </section>
 
     <!-- Abstract -->
-    <section id="abstract" class="max-w-3xl mx-auto py-16 px-6 text-center">
-        <h1 class="text-3xl font-bold mb-4">Breaking AMDs confidential computing with single memory write</h1>
-        <p class="text-lg leading-relaxed text-justify">
-With RMPocalypse, we uncover a significant weakness in all AMD processors supporting SEV-SNP (Zen 3/4/5). RMPocalypse is the strongest (in-scope) attack on SEV-SNP discovered so far. To mount an attack, an attacker only needs a single memory write to a special memory region called the Reverse Map Table, in short RMP. SEV-SNP uses the RMP memory range to store security metadata for all pages in the system, including itself. Thus, the RMP uses the RMP for protection. This creates a chicken-and-egg problem. AMD has an elegant solution to this problem; it uses a security co-processor to initialize the RMP. During initialization, the RMP memory is protected by the platform mechanism. RMPocalypse shows that these platform mechanisms have a severe weakness and allow an attacker to maliciously overwrite the RMP on initialzation. Due to the design of the RMP table, a single overwrite of 8 bytes within the RMP causes the entire table to become subsequently compromised. With a compromised RMP table, all integrity guarantees of SEV-SNP become void. RMPocalypse case studies show that an attacker-controlled RMP not only voids the integrity but also results in a full breach of confidentiality.
 
-We showcase RMPocalypse primitives by forging attestation values, reading and writing arbitrary encrypted CVM memory, and replaying the CVM register state.
-       </p>
+    <section id="abstract" class="max-w-3xl mx-auto py-16 px-1">
+        <h1 class="text-3xl font-bold mb-6 text-center">
+            Breaking AMD’s confidential computing with a single memory write
+        </h1>
+
+        <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6">
+            <p>
+                Confidential computing allows customers to off-load their computation to the cloud without having to
+                trust the cloud provider. One of the approaches to enable confidential computing is by anchoring the
+                trust in the hardware. AMD’s SEV-SNP, one such hardware mechanism, supports confidential computing by
+                creating confidential virtual machines. With RMPocalypse, we demonstrate an attack on all AMD processors
+                that support SEV-SNP (Zen 3/4/5) and compromise all confidential computing guarantees.
+
+                Reverse Map Table, in short RMP, is one of the main protection mechanisms in SEV-SNP to stop the
+                hypervisor from accessing the confidential virtual machines. In RMPocalypse, we exploit AMD’s incomplete
+                protections that allow us to perform a single memory write to the RMP, thus breaking SEV-SNP.
+
+            </p>
+
+            <h2 class="text-xl font-semibold mt-2">What is AMD SEV-SNP? </h2>
+            <p>
+                Secure Encrypted Virtualization-Secure Nested Paging, SEV-SNP for short, is AMD’s latest hardware
+                extension to support confidential computing.
+            </p>
+
+            <h2 class="text-xl font-semibold mt-2">What is RMP? </h2>
+            <p>
+                SEV-SNP uses a data structure called Reverse Map Table (RMP) to store security metadata for all DRAM
+                pages in the system. Since RMP can be large in size, it is stored in the DRAM. Now you might ask, who
+                protects the RMP? Well, the RMP! Easier said than done, as this design choice by AMD creates a
+                chicken-and-egg problem. The main challenge lies in the initialization, when the RMP is being set up in
+                the DRAM, there has to be an orthogonal mechanism in place to make sure this is done correctly. Only
+                after a successful initialization can the RMP protect itself (and of course the confidential VMs). AMD
+                has an elegant solution to this problem. They use a security co-processor called the PSP to initialize
+                the RMP. During initialization, platform protection mechanisms configured by the PSP protect the RMP.
+            </p>
+            <h2 class="text-xl font-semibold mt-2">What went wrong?</h2>
+            <p>
+                RMPocalypse shows that AMD’s platform protection mechanisms are not complete, thus leaving a small
+                window of opportunity for the attacker to maliciously overwrite the RMP on initialization. Due to the
+                design of the RMP, a single overwrite of 8 bytes within the RMP causes the entire RMP to become
+                subsequently compromised. With a compromised RMP, all integrity guarantees of SEV-SNP become void.
+                RMPocalypse case studies show that an attacker-controlled RMP not only voids the integrity but also
+                results in a full breach of confidentiality.
+            </p>
+            <h2 class="text-xl font-semibold mt-2">What can an attacker do with this vulnerability?</h2>
+            <p>
+                We showcase RMPocalypse primitives by forging attestation values, reading and writing arbitrary
+                encrypted CVM memory, and replaying the CVM register state.
+            </p>
+
+        </article>
     </section>
 
-    <section id="abstract" class="max-w-3xl mx-auto py-16 px-6 text-center">
-
-        <h1 class="text-3xl font-bold mb-4">Root Cause Analysis</h1>
-        <p class="text-lg leading-relaxed text-justify">
-We identify the root-cause as the misalignment of different memory protection mechanisms on the platform. AMD blocks the memory access to the RMP range during initialization from x86. It uses so-called Trusted Memory Regions (TMRs) to block any access from untrusted components (e.g., x86 cores), while allowing the Platform Security Processor (PSP) to access the memory. However, the hypervisor running on the x86 cores can still create dirty cachelines pointing to DRAM. The TMR barrier only stops the memory access at the memory controller level.
-        </p>
-            <!-- Image -->
-            <div class="text-center">
-                <img src="AttackDetail.svg" alt="High level overview of the RMPocalypse attack during SEV-SNP initialization"
-                    class="mx-auto w-full rounded-lg shadow-lg" />
-            </div>
-            <p class="text-lg leading-relaxed text-justify">
-
-During SEV-SNP init (b) a malicious hypervisor can create dirty cachelines pointing to RMP memory. After writing to the RMP range the PSP notifies the platform to switch from the TMR protection mechanism to start enforcing SEV-SNP semantics. Concretly this means that the TMR access checks are lifted and the core starts enforing RMP checks on memory accesses. However, these RMP checks occur before the memory write gets written to cache. Thus all data within the cache is assumed to be valid and already comply with the current security semantics. This leaves us with a time window during RMP initialization, where the x86 cores can create dirty cachline entries. These cacheline entries are neither subject to access control checks based on the TMR or the RMP. Thus, bypassing both protection mechanisms. As depicted in (c) the malicious hypervisor can use the primitive to get arbitrary unchecked writes to RMP memory.  
-        </p>
+    <section id="abstract" class="max-w-3xl mx-auto py-4 px-1 text-center">
+        <h1 class="text-3xl font-bold mb-5">Root Cause Analysis</h1>
+        <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6">
+            <p>
+                AMD performs an initialization step when the hypervisor wants to enable SEV-SNP on the platform. Setting
+                up the RMP is one of the critical steps in this initialization. Thus, during initialization, AMD blocks
+                all the memory accesses to the memory region that holds the RMP data structure. In particular, AMD uses
+                so-called Trusted Memory Regions (TMRs) to block any access from untrusted components (e.g., x86 cores).
+            </p>
+            <p>
+                In our analysis of the RMP initialization, we observed that the malicious hypervisor running on the x86
+                cores can still create dirty cachelines pointing to DRAM. As the TMR barrier only stops the memory
+                access at the memory controller level, it cannot stop cache pollution. Note that this in itself does not
+                compromise SEV-SNP yet, since the RMP is still intact in memory at this point and if the attacker tries
+                to flush the entry, the TMR will block it. It is after the initialization, when AMD lifts the TMR
+                barrier, when we can perform the flush, and the write goes through to the DRAM!
+            </p>
+            <p>
+                In summary, we identify the root-cause as the misalignment of different memory protection mechanisms on
+                the platform.
+            </p>
+        </article>
+        <!-- Image -->
+        <div class="text-center">
+            <img src="AttackDetail.svg"
+                alt="High level overview of the RMPocalypse attack during SEV-SNP initialization"
+                class="mx-auto w-full rounded-lg shadow-lg" />
+        </div>
+        <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6">
+            <p>
+                Figure (a) shows the main components of our attack with x86 cores and caches connected to the DRAM over
+                an interconnect. During SEV-SNP init, as shown in (b), a malicious hypervisor creates dirty cachelines
+                pointing to RMP memory.
+            </p>
+            <p>
+                Then it lets the PSP setup the RMP per usual and waits for the acknowledgement that the initialization
+                is complete. In particular, after writing to the RMP range the PSP notifies the platform to switch from
+                the TMR protection mechanism and start enforcing SEV-SNP semantics. Concretely, this means that the TMR
+                access checks are lifted and the core starts enforcing RMP checks on memory accesses. However, these RMP
+                checks occur before the memory write gets written to cache. Thus, all data within the cache is assumed
+                to be valid and already complies with the current security semantics. This leaves us with a time window
+                during RMP initialization, where the x86 cores can flush the previously created dirty cacheline entries.
+                They are neither subject to access control checks based on the TMR nor the RMP, thus bypassing both
+                protection mechanisms. As depicted in (c), the malicious hypervisor can use the primitive to get
+                arbitrary unchecked writes to RMP memory.
+            </p>
+        </article>
     </section>
 
+    <section id="abstract" class="max-w-3xl mx-auto py-4 px-1">
+        <h1 class="text-3xl font-bold mb-6 text-center">
+            Attack Complexity
+        </h1>
 
+        <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6">
+
+            <p>
+                We perform the above RMP corruption during the SEV initialization. RMPocalypse is deterministic since
+                our malicious write always goes through. Next, with our choice of corrupting the root RMP entry with
+                this write, we can tamper with all RMP entries in the system and the logic state they belong to. Our
+                paper explains the detailed analysis of the RMP states. But in short, the RMP write-protects a critical
+                metadata page for CVMs. This page holds security sensitive information, such as debug-enable bit and the
+                attestation hash. With the RMP checks practically disabled, we show how to corrupt these metadata pages
+                to enable debug mode and bypass attestation. With each of these primitives, we can arbitrarily tamper
+                with the execution of the confidential VMs and exfiltrate all secrets with 100% success rate.
+            </p>
+        </article>
+
+    </section>
     <!-- Paper Link -->
     <section class="bg-gray-100 py-16 px-6">
         <div class="max-w-3xl mx-auto text-center">
