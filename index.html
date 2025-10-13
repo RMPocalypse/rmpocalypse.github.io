@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>RMPocalypse Attack</title>
+    <meta charset="UTF-8" />
+    <meta property="og:title" content="RMPocalypse Attack">
+    <meta property="og:description"
+        content="How A Catch-22 Breaks AMD SEV-SNP">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://rmpocalypse.github.io/">
+    <meta property="og:image" content="https://rmpocalypse.github.io/preview.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="627">
+    <meta property="og:site_name" content="RMPocalypse Attack">
+    <meta name=twitter:card content="summary_large_image">
+    <meta name=twitter:image content="https://rmpocalypse.github.io/preview.jpg">
+    <meta name=twitter:title content="RMPocalypse Attack">
+    <meta name=twitter:description
+        content="How A Catch-22 Breaks AMD SEV-SNP">
+    <meta name=twitter:site content="@sectrs_ethz">
+    <meta name=description
+        content="How A Catch-22 Breaks AMD SEV-SNP">
+    <script
+        type=application/ld+json>{"@context":"https://schema.org","@graph":[{"@type":"WebSite","url":"https://rmpocalypse.github.io/","name":"RMPocalypse Attack","description":"AMD SEV-SNP offers confidential computing in form of confidential VMs, such that the untrusted hypervisor cannot tamper with its confidentiality and integrity. SEV-SNP, the latest addition, ensures integrity via the Reverse Map Table (RMP) that stops the hypervisor from tampering guest page mappings. AMD uses RMP entries to protect the rest of the RMP, thus causing a Catch-22 during the RMP setup phase. To address this, SEV-SNP relies on AMD's Platform Security Processor (PSP), that resides next to the x86 cores executing SEV-SNP VMs, to perform the RMP initialization. During initialization, only PSP should be able to alter the RMP memory. All other memory accesses must be fenced, especially from the x86 cores. We present RMPocalypse, a novel attack that shows a critical gap in the security of RMP initialization, wherein the x86 cores maliciously control parts of the initial RMP state. Our analysis shows that the vulnerability arises due to the complex, but insufficient, interplay of multiple hardware components and distributed access controls. To show the impact of our finding, we exploit this gap to break confidentiality and integrity guarantees of SEV-SNP. We demonstrate RMPocalypse by enabling debug on production-mode CVMs, faking attestation, VMSA state replay, and code injection"}]}</script>
+    <script
+        type=application/ld+json>{"@context":"https://schema.org","@graph":[{"@type":"Organization","url":"https://rmpocalypse.github.io/","name":"Secure and Trustworthy Systems Group ETHZ","image":[{"@id":"https://rmpocalypse.github.io/preview.jpg"}],"logo":{"@id":"https://rmpocalypse.github.io/android-chrome-512x512.png"]}</script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: smooth;
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+
+</head>
+
+<body class="bg-gray-50 text-gray-800 font-inter">
+
+    <section class="min-h-screen flex items-center justify-center bg-black text-white px-6">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-10">
+
+            <!-- Image -->
+            <div class="md:w-1/2 text-center">
+                <img src="rmpocalypse_logo.png" alt="RMPocalypse: How a Catch-22 Breaks AMD SEV-SNP"
+                    class="mx-auto w-full max-w-lg rounded-lg shadow-lg" />
+            </div>
+
+            <!-- Text Content -->
+            <div class="md:w-1/2 text-center md:text-left">
+                <h1 class="text-5xl font-bold mb-4">RMPocalypse</h1>
+                <p class="text-xl mb-6">How a Catch-22 Breaks AMD SEV-SNP<br>(ACM CCS 2025)</p>
+                <a href="#abstract" class="bg-white text-black px-6 py-3 rounded-full font-semibold">Learn More</a>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Abstract -->
+    <section id="abstract" class="max-w-3xl mx-auto py-16 px-6 text-center">
+        <h1 class="text-3xl font-bold mb-4">Breaking AMDs confidential computing with single memory write</h1>
+        <p class="text-lg leading-relaxed text-justify">
+With RMPocalypse, we uncover a significant weakness in all AMD processors supporting SEV-SNP (Zen 3/4/5). RMPocalypse is the strongest (in-scope) attack on SEV-SNP discovered so far. To mount an attack, an attacker only needs a single memory write to a special memory region called the Reverse Map Table, in short RMP. SEV-SNP uses the RMP memory range to store security metadata for all pages in the system, including itself. Thus, the RMP uses the RMP for protection. This creates a chicken-and-egg problem. AMD has an elegant solution to this problem; it uses a security co-processor to initialize the RMP. During initialization, the RMP memory is protected by the platform mechanism. RMPocalypse shows that these platform mechanisms have a severe weakness and allow an attacker to maliciously overwrite the RMP on initialzation. Due to the design of the RMP table, a single overwrite of 8 bytes within the RMP causes the entire table to become subsequently compromised. With a compromised RMP table, all integrity guarantees of SEV-SNP become void. RMPocalypse case studies show that an attacker-controlled RMP not only voids the integrity but also results in a full breach of confidentiality.
+
+We showcase RMPocalypse primitives by forging attestation values, reading and writing arbitrary encrypted CVM memory, and replaying the CVM register state.
+       </p>
+    </section>
+
+    <section id="abstract" class="max-w-3xl mx-auto py-16 px-6 text-center">
+
+        <h1 class="text-3xl font-bold mb-4">Root Cause Analysis</h1>
+        <p class="text-lg leading-relaxed text-justify">
+We identify the root-cause as the misalignment of different memory protection mechanisms on the platform. AMD blocks the memory access to the RMP range during initialization from x86. It uses so-called Trusted Memory Regions (TMRs) to block any access from untrusted components (e.g., x86 cores), while allowing the Platform Security Processor (PSP) to access the memory. However, the hypervisor running on the x86 cores can still create dirty cachelines pointing to DRAM. The TMR barrier only stops the memory access at the memory controller level.
+        </p>
+            <!-- Image -->
+            <div class="text-center">
+                <img src="AttackDetail.svg" alt="High level overview of the RMPocalypse attack during SEV-SNP initialization"
+                    class="mx-auto w-full rounded-lg shadow-lg" />
+            </div>
+            <p class="text-lg leading-relaxed text-justify">
+
+During SEV-SNP init (b) a malicious hypervisor can create dirty cachelines pointing to RMP memory. After writing to the RMP range the PSP notifies the platform to switch from the TMR protection mechanism to start enforcing SEV-SNP semantics. Concretly this means that the TMR access checks are lifted and the core starts enforing RMP checks on memory accesses. However, these RMP checks occur before the memory write gets written to cache. Thus all data within the cache is assumed to be valid and already comply with the current security semantics. This leaves us with a time window during RMP initialization, where the x86 cores can create dirty cachline entries. These cacheline entries are neither subject to access control checks based on the TMR or the RMP. Thus, bypassing both protection mechanisms. As depicted in (c) the malicious hypervisor can use the primitive to get arbitrary unchecked writes to RMP memory.  
+        </p>
+    </section>
+
+
+    <!-- Paper Link -->
+    <section class="bg-gray-100 py-16 px-6">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-3xl font-bold mb-4">Further Information</h2>
+            <p class="mb-6">Read the full academic paper for implementation details.</p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4 max-w-2xl mx-auto">
+                <a href="rmpocalypse-CCS2025.pdf" target="_blank" rel="noopener noreferrer"
+                    class="flex-1 bg-black text-white text-center px-6 py-3 rounded-full font-semibold">
+                    Read the Paper
+                </a>
+
+                <a href="citation.html" target="_blank" rel="noopener noreferrer"
+                    class="flex-1 bg-black text-white text-center px-6 py-3 rounded-full font-semibold">
+                    View Citation
+                </a>
+
+                <a href="https://github.com/rmpocalypse" target="_blank" rel="noopener noreferrer"
+                    class="flex-1 bg-black text-white text-center px-6 py-3 rounded-full font-semibold">
+                    View Code
+                </a>
+            </div>
+    </section>
+
+    <section id="faq" class="bg-white py-16 px-6">
+        <div class="max-w-3xl mx-auto text-left text-gray-900 space-y-6">
+            <h2 class="text-3xl font-bold mb-6">FAQ</h2>
+
+            <!-- FAQ Items -->
+            <div class="space-y-4" id="faq-container">
+                <!-- Each item gets rendered below -->
+            </div>
+        </div>
+    </section>
+
+    <script>
+        const faqs = [
+            {
+                q: "Which processors are affected?",
+                a: "All AMD Zen processors supporting SEV-SNP. Namely Zen 3, Zen 4 and Zen 5."
+            },
+            {
+                q: "Does RMPocalypse affect non-confidential VMs that I have in the cloud?",
+                a: "No, RMPocalypse does not affect non-confidential VMs."
+            },
+            {
+                q: "Is there a CVE?",
+                a: "Yes, CVE-2025-0033."
+            },
+            {
+                q: "What was AMDs response?",
+                a: "AMDs response is available here <a href='https://www.amd.com/en/resources/product-security.html' target='_blank' class='text-blue-600 underline'>AMD Security Bulletin</a>."
+            },
+            {
+                q: "Is there a patch available?",
+                a: "Yes, AMD released firmware updates to mitigate the issue. Refer to AMDs Security Bulletin for more information.",
+            },
+            {
+                q: "Does this attack require physical access?",
+                a: "No, RMPocalypse does not require physical access and is thus fully in scope of AMDs threat model.",
+            },
+            {
+                q: "How difficult is it to exploit?",
+                a: "RMPocalypse is the easiest exploitable vulnerability on SEV-SNP with maximum severity. It fully compromises SEV-SNP integrity and subsequently confidentiality with a single memory write and has 100% success probability.",
+            },
+            {
+                q: "What is the root-cause?",
+                a: "The root cause of RMPocalypse lies with misaligned memory protection mechanisms during the bootstrapping of SEV-SNP"
+            },
+            {
+                q: "Can I use the logo?",
+                a: "Sure, the logo is free to use."
+            },
+        ];
+
+        const container = document.getElementById("faq-container");
+
+        faqs.forEach((item, i) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "border border-gray-200 rounded-lg";
+
+            wrapper.innerHTML = `
+      <button onclick="toggleFAQ(${i})"
+              class="w-full flex justify-between items-center px-4 py-3 text-left font-semibold text-lg focus:outline-none hover:bg-gray-50">
+        <span>${item.q}</span>
+        <span id="faq-icon-${i}" class="transition-transform duration-300 transform">▼</span>
+      </button>
+      <div id="faq-answer-${i}" class="px-4 pb-4 text-base text-gray-700 hidden transition-all duration-300">
+        ${item.a}
+      </div>
+    `;
+
+            container.appendChild(wrapper);
+        });
+
+        function toggleFAQ(index) {
+            const answer = document.getElementById(`faq-answer-${index}`);
+            const icon = document.getElementById(`faq-icon-${index}`);
+            const isOpen = !answer.classList.contains('hidden');
+
+            // Close all first (optional)
+            // document.querySelectorAll('[id^="faq-answer-"]').forEach(el => el.classList.add('hidden'));
+            // document.querySelectorAll('[id^="faq-icon-"]').forEach(el => el.classList.remove('rotate-180'));
+
+            answer.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
+    </script>
+
+    <!-- Authors -->
+    <section class="bg-gray-100 py-16 px-6">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-stretch gap-8">
+
+            <!-- Author List -->
+            <div class="flex-1 flex flex-col justify-center">
+                <h2 class="text-3xl font-bold mb-4 text-center md:text-left">Authors</h2>
+                <ul class="list-disc space-y-4 text-lg">
+                    <li><a href="https://benschlueter.com/" target="_blank" class="text-blue-600 underline">Benedict
+                            Schlüter</a></li>
+                    <li><a href="https://www.shwetashinde.org/" target="_blank" class="text-blue-600 underline">Shweta
+                            Shinde</a></li>
+                </ul>
+            </div>
+
+            <!-- Group Logo -->
+            <div class="flex-1 flex justify-center items-center">
+                <img src="sectrs.png" alt="Group Logo"
+                    class="transform scale-50 h-full scale-50 w-auto object-contain" />
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center py-8 bg-black text-white">
+        <span style="float:left;"> <a href="imprint.html">Imprint</a></span>
+        <p>© 2025 Sectrs Group @ETH Zurich. All rights reserved.</p>
+        <p>Contact: <a href="mailto:benedict.schlueter@inf.ethz.ch" class="underline">benedict.schlueter@inf.ethz.ch</a>
+        </p>
+    </footer>
+
+</body>
+
+</html>
