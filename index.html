@@ -135,18 +135,18 @@
             </p>
         </article>
         <!-- Image -->
-        <div class="text-center">
+        <div class="text-center py-6">
             <img src="AttackDetail.svg"
                 alt="High level overview of the RMPocalypse attack during SEV-SNP initialization"
                 class="mx-auto w-full rounded-lg shadow-lg" />
         </div>
-        <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6">
+
+
+        <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6 py-5">
             <p>
                 Figure (a) shows the main components of our attack with x86 cores and caches connected to the DRAM over
                 an interconnect. During SEV-SNP init, as shown in (b), a malicious hypervisor creates dirty cachelines
                 pointing to RMP memory.
-            </p>
-            <p>
                 Then it lets the PSP setup the RMP per usual and waits for the acknowledgement that the initialization
                 is complete. In particular, after writing to the RMP range the PSP notifies the platform to switch from
                 the TMR protection mechanism and start enforcing SEV-SNP semantics. Concretely, this means that the TMR
@@ -243,11 +243,11 @@
             },
             {
                 q: "How difficult is it to exploit?",
-                a: "RMPocalypse is the easiest exploitable vulnerability on SEV-SNP with maximum severity. It fully compromises SEV-SNP integrity and subsequently confidentiality with a single memory write and has 100% success probability.",
+                a: "RMPocalypse is easy to exploit without the need of any heuristics, single-stepping, or side-channel information. In other words, we achieve a 100% success probability.",
             },
             {
                 q: "What is the root-cause?",
-                a: "The root cause of RMPocalypse lies with misaligned memory protection mechanisms during the bootstrapping of SEV-SNP"
+                a: "The root cause of RMPocalypse lies with misaligned memory protection mechanisms during the bootstrapping of SEV-SNP."
             },
             {
                 q: "Does this attack also impact other confidential computing platforms such as  Intel SGX, Intel TDX, Arm CCA?",
