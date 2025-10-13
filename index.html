@@ -58,7 +58,7 @@
 
     <!-- Abstract -->
 
-    <section id="abstract" class="max-w-3xl mx-auto py-16 px-1">
+    <section id="abstract" class="max-w-3xl mx-auto py-16 px-6">
         <h1 class="text-3xl font-bold mb-6 text-center">
             Breaking AMD’s confidential computing with a single memory write
         </h1>
@@ -112,7 +112,7 @@
         </article>
     </section>
 
-    <section id="abstract" class="max-w-3xl mx-auto py-4 px-1 text-center">
+    <section id="abstract" class="max-w-3xl mx-auto py-4 px-6 text-center">
         <h1 class="text-3xl font-bold mb-5">Root Cause Analysis</h1>
         <article class="text-justify text-lg leading-relaxed text-gray-900 space-y-6">
             <p>
@@ -161,7 +161,7 @@
         </article>
     </section>
 
-    <section id="abstract" class="max-w-3xl mx-auto py-4 px-1">
+    <section id="abstract" class="max-w-3xl mx-auto py-4 px-6">
         <h1 class="text-3xl font-bold mb-6 text-center">
             Attack Complexity
         </h1>
@@ -218,7 +218,7 @@
     <script>
         const faqs = [
             {
-                q: "Which processors are affected?",
+                q: "Which AMD processors are affected?",
                 a: "All AMD Zen processors supporting SEV-SNP. Namely Zen 3, Zen 4 and Zen 5."
             },
             {
@@ -248,6 +248,10 @@
             {
                 q: "What is the root-cause?",
                 a: "The root cause of RMPocalypse lies with misaligned memory protection mechanisms during the bootstrapping of SEV-SNP"
+            },
+            {
+                q: "Does this attack also impact other confidential computing platforms such as  Intel SGX, Intel TDX, Arm CCA?",
+                a: "No, RMPocalypse exploits unique aspects of SEV-SNP. Other technologies such as Intel TDX or ARM CCA are not affected as per our analysis."
             },
             {
                 q: "Can I use the logo?",
